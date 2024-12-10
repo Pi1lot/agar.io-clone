@@ -26,7 +26,65 @@ let leaderboardChanged = false;
 
 const Vector = SAT.Vector;
 
+const client = require('prom-client');
+
 app.use(express.static(__dirname + '/../client'));
+
+
+// Configuration des métriques Prometheus
+const collectDefaultMetrics = client.collectDefaultMetrics;
+collectDefaultMetrics(); // Collecte des métriques par défaut du processus Node.js
+
+// Création de métriques personnalisées
+const connectedPlayersGauge = new client.Gauge({
+    name: 'game_connected_players_total',
+    help: 'Total number of connected players',
+});
+
+const spectatorsGauge = new client.Gauge({
+    name: 'game_spectators_total',
+    help: 'Total number of spectators',
+});
+
+const leaderboardUpdatesCounter = new client.Counter({
+    name: 'game_leaderboard_updates_total',
+    help: 'Total number of leaderboard updates',
+});
+
+// Mettre à jour les métriques dans les fonctions du jeu
+const updateMetrics = () => {
+    connectedPlayersGauge.set(map.players.data.length);
+    spectatorsGauge.set(spectators.length);
+};
+
+// Appeler cette fonction périodiquement ou à chaque mise à jour pertinente
+setInterval(updateMetrics, 5000); // Mise à jour toutes les 5 secondes
+
+// Endpoint pour exposer les métriques
+app.get('/metrics', async (req, res) => {
+    res.set('Content-Type', client.register.contentType);
+    res.end(await client.register.metrics());
+});
+
+// Modification de la fonction calculateLeaderboard pour incrémenter le compteur
+const calculateLeaderboard = () => {
+    const topPlayers = map.players.getTopPlayers();
+
+    if (leaderboard.length !== topPlayers.length) {
+        leaderboard = topPlayers;
+        leaderboardChanged = true;
+        leaderboardUpdatesCounter.inc(); // Incrémenter le compteur à chaque mise à jour du leaderboard
+    } else {
+        for (let i = 0; i < leaderboard.length; i++) {
+            if (leaderboard[i].id !== topPlayers[i].id) {
+                leaderboard = topPlayers;
+                leaderboardChanged = true;
+                leaderboardUpdatesCounter.inc(); // Incrémenter le compteur
+                break;
+            }
+        }
+    }
+};
 
 io.on('connection', function (socket) {
     let type = socket.handshake.query.type;
