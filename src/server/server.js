@@ -337,22 +337,6 @@ const tickGame = () => {
 
 };
 
-const calculateLeaderboard = () => {
-    const topPlayers = map.players.getTopPlayers();
-
-    if (leaderboard.length !== topPlayers.length) {
-        leaderboard = topPlayers;
-        leaderboardChanged = true;
-    } else {
-        for (let i = 0; i < leaderboard.length; i++) {
-            if (leaderboard[i].id !== topPlayers[i].id) {
-                leaderboard = topPlayers;
-                leaderboardChanged = true;
-                break;
-            }
-        }
-    }
-}
 
 const gameloop = () => {
     if (map.players.data.length > 0) {
